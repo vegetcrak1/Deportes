@@ -1,29 +1,34 @@
-import pandas as pd
-import logging
+# Importamos las herramientas que construimos en la carpeta 'src'
+from src.extraccion import extraer_datos
 from src.transformacion import limpiar_datos
-from src.carga import cargar_sqlite_idempotente
-
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+from src.carga import guardar_en_bd, guardar_parquet 
 
 def ejecutar_pipeline():
-    logging.info("Arrancando Pipeline Orquestador...")
-    ruta = 'datos/fifa_sports_raw_data.csv'
+    print("INFO - Arrancando Pipeline Orquestador ETL completo...")
     
-    # Lectura fraccionada (chunks) y delimitador explicito como manda la guia
-    iterador_lotes = pd.read_csv(ruta, sep=',', encoding='utf-8', chunksize=2, low_memory=False)
+    # FASE 1: EXTRACCIÓN
+    # Llamamos al módulo que lee el dataset pesado de Kaggle
+    ruta_csv = 'datos/Fifa 23 Players Data.csv'
+    df_crudo = extraer_datos(ruta_csv)
     
-    df_completo = []
-    for num, lote in enumerate(iterador_lotes):
-        logging.info(f"Procesando lote {num + 1}...")
-        lote_limpio = limpiar_datos(lote)
-        cargar_sqlite_idempotente(lote_limpio)
-        df_completo.append(lote_limpio)
-        
-    # Exportacion final a Parquet analítico
-    if df_completo:
-        df_final = pd.concat(df_completo)
-        df_final.to_parquet('datos/fifa_analitica.parquet', index=False)
-        logging.info("Pipeline completado exitosamente.")
+    # FASE 2: TRANSFORMACIÓN
+    # Pasamos los datos crudos por el filtro de limpieza
+    df_limpio = limpiar_datos(df_crudo)
+    
+    # FASE 3: CARGA
+    # Guardamos los datos procesados en la base de datos y en el archivo de alto rendimiento
+    guardar_en_bd(df_limpio, 'jugadores_fifa23_limpio')
+    guardar_parquet(df_limpio, 'datos/fifa23_analitica.parquet')
+    # FASE 3: CARGA
+    # Guardamos los datos procesados en la base de datos y en los archivos de salida
+    guardar_en_bd(df_limpio, 'jugadores_fifa23_limpio')
+    guardar_parquet(df_limpio, 'datos/fifa23_analitica.parquet')
+    
+    # NUEVA LÍNEA: Exportar también el resultado limpio a formato CSV para visualizarlo
+    df_limpio.to_csv('datos/fifa_sports_cleaned.csv', index=False)
+    
+    print("INFO - Pipeline ETL completado con éxito. Datos listos.")
 
-if __name__ == "__main__":
+# Este bloque asegura que el pipeline solo corra si ejecutamos este archivo directamente
+if __name__ == '__main__':
     ejecutar_pipeline()

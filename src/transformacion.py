@@ -1,15 +1,26 @@
 import pandas as pd
-import re
 
 def limpiar_datos(df):
-    df = df.drop_duplicates(subset=['ID'], keep='first').copy()
-    df['Name'] = df['Name'].str.strip()
+    print("INFO - Iniciando Transformación y Limpieza de datos...")
     
-    def parsear_plata(v):
-        v = str(v).replace('€', '').strip()
-        if 'M' in v: return float(v.replace('M', '')) * 1000000
-        if 'K' in v: return float(v.replace('K', '')) * 1000
-        return 0.0
+    # 1. Eliminar filas que sean copias exactas
+    df = df.drop_duplicates().copy()
     
-    df['Value_EUR'] = df['Value'].apply(parsear_plata)
-    return df[['ID', 'Name', 'Value_EUR']]
+    # 2. Manejo de nulos (los que convertimos en la extracción)
+    # Rellenamos los nulos de la columna de préstamos con 'FALSE' y el resto con 'Sin Registro'
+    df['On Loan'] = df['On Loan'].fillna('FALSE')
+    df.fillna('Sin Registro', inplace=True)
+    
+    # 3. Filtrado Inteligente: El dataset trae 89 columnas, eso es demasiada basura.
+    # Vamos a quedarnos solo con las más importantes para el análisis.
+    columnas_clave = [
+        'Full Name', 'Age', 'Height(in cm)', 'Weight(in kg)', 
+        'Overall', 'Value(in Euro)', 'Club Name', 'Nationality'
+    ]
+    df_filtrado = df[columnas_clave].copy()
+    
+    # 4. Asegurar que el dinero y las medidas se traten matemáticamente como números
+    df_filtrado['Value(in Euro)'] = pd.to_numeric(df_filtrado['Value(in Euro)'], errors='coerce')
+    
+    print("INFO - Transformación exitosa. Datos listos para cargar.")
+    return df_filtrado

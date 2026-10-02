@@ -1,18 +1,14 @@
+import sqlite3
 import pandas as pd
-import logging
-from sqlalchemy import create_engine, text
 
-motor_bd = create_engine('sqlite:///datos/almacen_fifa.db')
+def guardar_en_bd(df, nombre_tabla):
+    print(f"INFO - Guardando datos en la base de datos SQLite (Tabla: {nombre_tabla})...")
+    conexion = sqlite3.connect('datos/almacen_fifa.db')
+    df.to_sql(nombre_tabla, conexion, if_exists='replace', index=False)
+    conexion.close()
+    print("INFO - Datos guardados en SQLite con éxito.")
 
-def cargar_sqlite_idempotente(df_lote):
-    with motor_bd.connect() as conexion:
-        try:
-            res = pd.read_sql(text("SELECT ID FROM jugadores_dim"), con=conexion)
-            ids_existentes = res['ID'].tolist()
-        except:
-            ids_existentes = []
-            
-        df_nuevos = df_lote[~df_lote['ID'].isin(ids_existentes)]
-        if not df_nuevos.empty:
-            df_nuevos.to_sql('jugadores_dim', con=motor_bd, if_exists='append', index=False)
-            logging.info(f"Cargados {len(df_nuevos)} registros nuevos.")
+def guardar_parquet(df, ruta_parquet):
+    print(f"INFO - Guardando archivo Parquet de alto rendimiento en: {ruta_parquet}")
+    df.to_parquet(ruta_parquet, index=False)
+    print("INFO - Archivo Parquet guardado con éxito.")
